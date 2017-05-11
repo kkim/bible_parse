@@ -59,6 +59,7 @@ class Matrix:public std::vector<std::vector<T> >
 
 };
 
+
 inline std::string trim(const std::string &s)
 {
    auto wsfront=std::find_if_not(s.begin(),s.end(),[](int c){return std::isspace(c);});
@@ -70,6 +71,13 @@ typedef std::vector<std::string> vchapter;
 typedef std::vector<vchapter> vbook;
 typedef std::map<std::string,int> WordCountVec;
 typedef std::map<std::string, vbook> Bible;
+typedef std::pair<std::string, std::string> BookBook;
+
+Matrix<double> compute_book_to_book_distance(const std::map<std::string, WordCountVec>& wc_by_book);
+
+template <typename T>
+std::map<BookBook, T> BookBookMatrix_to_map(const std::vector<std::string>& booknames, const Matrix<T>& mat);
+
 
 int count_words(const vchapter& vc, WordCountVec& word_count)
 {
@@ -121,17 +129,21 @@ double wcv_length(const WordCountVec& wc)
   return sqrt(mag);
 }
 
-double wcv_dot_wcv(WordCountVec& wc1, WordCountVec& wc2)
+double wcv_dot_wcv(const WordCountVec& wc1, const WordCountVec& wc2)
 {
   double dot = 0.0;
-  for(const auto w_c: wc1)
+  for(const auto& w_c: wc1)
   {
-    dot += (double)w_c.second*wc2[w_c.first];
+    // in order to use .at() method, make sure the key exists
+    if(wc2.find(w_c.first)!=wc2.end())
+    {
+      dot += (double)w_c.second*wc2.at(w_c.first);
+    }
   }
   return dot;
 }
 
-double wcv_distance(WordCountVec& wc1, WordCountVec& wc2)
+double wcv_distance(const WordCountVec& wc1, const WordCountVec& wc2)
 {
   double mag1 = wcv_length(wc1);
   double mag2 = wcv_length(wc2);
@@ -300,39 +312,83 @@ int main(int argc, char** argv)
     wc_by_book[book.first] = wcv;
   }
 
-  // Compute distance
+  // Compute distance matrix
   auto t4 = std::chrono::system_clock::now();
-  Matrix<double> dist(vbible.size(), vbible.size());
-  typedef std::pair<std::string, std::string> BookBook;
-  std::map<BookBook, double> bbdist;
+  Matrix<double> dist;
 
-  int i1 = 0;
-  for(auto book1i = vbible.begin(); book1i != vbible.end(); ++book1i, ++i1)
-  {
-    auto book2i = book1i; int i2 = i1;
-    for(++book2i, ++i2; book2i!=vbible.end(); ++book2i, ++i2)
-    {
-      double d = wcv_distance(wc_by_book[(*book1i).first], wc_by_book[(*book2i).first]);
-      dist[i1][i2] = dist[i2][i1] = d;
+  dist = compute_book_to_book_distance(wc_by_book);
 
-      bbdist[std::make_pair((*book1i).first, (*book2i).first)] = d;
-    }
-    std::cout<<(*book1i).first<<",";
-  }
-  std::cout<<std::endl;
-  std::cout<<dist;
+
+
   auto t5 = std::chrono::system_clock::now();
   time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
   std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
 
   // Sort by closest book-book pair
-  std::vector<std::pair<BookBook, double> > vbbdist(bbdist.begin(), bbdist.end());
+  // - matrix into a vector
+  
+  std::vector<std::string> booknames;
+  // - - copy only book names
+  std::transform(wc_by_book.begin(), wc_by_book.end(), std::back_inserter(booknames), 
+                 [](const std::map<std::string, WordCountVec>::value_type& wc){return wc.first;});
+
+  // - - convert it to a book-book to dist map
+  std::map<BookBook, double> bbdist = BookBookMatrix_to_map(booknames, dist);
+
+  // - - convert bbdist to a vector of BookBook,double pair
+  std::vector<std::pair<BookBook, double> > vbbdist;
+  std::transform(bbdist.begin(), bbdist.end(), std::back_inserter(vbbdist),[](const std::map<BookBook,double>::value_type& bbd){return std::make_pair(bbd.first, bbd.second);});
+
   std::sort(vbbdist.begin(), vbbdist.end(), [](const std::pair<BookBook,double>& bbd1, const std::pair<BookBook, double>& bbd2)
   {return bbd1.second<bbd2.second;});
+
   for(auto bbd: vbbdist)
   {
     std::cout<<bbd.first.first<<"-"<<bbd.first.second<<": "<<bbd.second<<std::endl;
   } 
 
   return 0;
+}
+
+
+
+
+
+
+Matrix<double> compute_book_to_book_distance(const std::map<std::string, WordCountVec>& wc_by_book)
+{
+  Matrix<double> dist(wc_by_book.size(), wc_by_book.size());
+  int i1 = 0;
+  for(auto book1i = wc_by_book.begin(); book1i != wc_by_book.end(); ++book1i, ++i1)
+  {
+    int i2 = 0;
+    for(auto book2i = wc_by_book.begin(); book2i!=book1i; ++book2i, ++i2)
+    {
+      double d = wcv_distance(wc_by_book.at((*book1i).first), wc_by_book.at((*book2i).first));
+      dist[i1][i2] = dist[i2][i1] = d;
+    }
+    std::cout<<(*book1i).first<<",";
+  }
+  std::cout<<std::endl;
+  std::cout<<dist;
+  return dist;
+}
+
+template <typename T>
+std::map<BookBook, T> BookBookMatrix_to_map(const std::vector<std::string>& booknames, const Matrix<T>& mat)
+{
+  std::map<BookBook, T> bbdist;
+
+  int i1=0;
+  for(std::vector<std::string>::const_iterator book1 = booknames.begin(); book1!=booknames.end(); ++book1)
+  {
+    std::vector<std::string>::const_iterator book2 = book1; int i2 = i1;
+    for(++book2, ++i2; book2!=booknames.end(); ++book2, ++i2)
+    {
+      bbdist[std::make_pair((*book1), (*book2))] = mat[i1][i2];
+    }
+    ++i1;
+  }
+
+  return bbdist;
 }
