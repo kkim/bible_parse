@@ -67,11 +67,18 @@ inline std::string trim(const std::string &s)
    return (wsback<=wsfront ? std::string() : std::string(wsfront,wsback));
 }
 
-typedef std::vector<std::string> vchapter;
-typedef std::vector<vchapter> vbook;
+typedef std::vector<std::string> Chapter;
+typedef std::vector<Chapter> Book;
 typedef std::map<std::string,int> WordCountVec;
-typedef std::map<std::string, vbook> Bible;
+typedef std::map<std::string, Book> Bible;
 typedef std::pair<std::string, std::string> BookBook;
+typedef std::map<std::tuple<std::string, std::string>, int> Bigram;
+
+void add_to_bigram(Bigram& bigram, const std::string& word1, const std::string& word2);
+void construct_bigram(const Chapter& book, Bigram& bigram);
+void construct_bigram(const Book& book, Bigram& bigram);
+void construct_bigram(const Bible& bible, Bigram& bigram);
+
 
 Matrix<double> compute_book_to_book_distance(const std::map<std::string, WordCountVec>& wc_by_book);
 
@@ -79,7 +86,7 @@ template <typename T>
 std::map<BookBook, T> BookBookMatrix_to_map(const std::vector<std::string>& booknames, const Matrix<T>& mat);
 
 
-int count_words(const vchapter& vc, WordCountVec& word_count)
+int count_words(const Chapter& vc, WordCountVec& word_count)
 {
   std::string word;
   int n_word = 0;
@@ -99,7 +106,7 @@ int count_words(const vchapter& vc, WordCountVec& word_count)
   return n_word;
 }
 
-int count_words(const vbook& vb, WordCountVec& word_count)
+int count_words(const Book& vb, WordCountVec& word_count)
 {
   int n_word = 0;
   for(const auto& chapter: vb)
@@ -177,21 +184,17 @@ int main(int argc, char** argv)
   std::regex verse_regex("([1|2|3]? ?[A-Z][a-z]*)\\s+([1-9][0-9]*)\\:([1-9][0-9]*)\\s+(.*)");
   std::smatch verse_match;
 
-
-#ifdef USE_MAP
-  // Make Bible with a map
-  std::cout<<"Bible with a map"<<std::endl;
-  auto t0 = std::chrono::system_clock::now();
-
-  typedef std::map<int, std::string> chapter;
-  typedef std::map<int, chapter> book;
-  std::map<std::string, book> bible;
+  auto t1 = std::chrono::system_clock::now();
+  // Make Bible a vector of books
+  std::cout<<"Bible with a vector"<<std::endl;
+  Bible bible;
 
   for(const auto &verse : verses)
   { 
     const auto& verset = trim(verse);
     if(std::regex_match(verset, verse_match, verse_regex))
     {
+      // Using regex, extract book name, chapter#, verse#, and the verse line.
       std::string bookname = *(verse_match.begin()+1);
       int chapter_n = std::stoi(*(verse_match.begin()+2));
       int verse_n = std::stoi(*(verse_match.begin()+3));
@@ -199,89 +202,26 @@ int main(int argc, char** argv)
      
       if(bible.find(bookname) == bible.end())
       {
-        bible[bookname] = book();
+        bible[bookname] = Book(1, Chapter(1,""));
       }
-      if(bible[bookname].find(chapter_n) ==bible[bookname].end())
+      if(bible[bookname].size()==chapter_n)
       {
-        bible[bookname][chapter_n] = chapter();
+        bible[bookname].emplace_back(Chapter(1,""));
       }
-      bible[bookname][chapter_n][verse_n] = verse_line;
-
-    }
-  }
-#endif
-
-#ifdef USE_MAP
-  auto t3 = std::chrono::system_clock::now();
-  std::cout<<"Took "<<(t3-t0).count()<<" second"<<std::endl;
-  std::cout<<bible["John"][3][16]<<std::endl;
-#endif
-
-  auto t1 = std::chrono::system_clock::now();
-  // Make Bible with a vector
-  std::cout<<"Bible with a vector"<<std::endl;
-  Bible vbible;
-
-  for(const auto &verse : verses)
-  { 
-    const auto& verset = trim(verse);
-    if(std::regex_match(verset, verse_match, verse_regex))
-    {
-      std::string bookname = *(verse_match.begin()+1);
-      int chapter_n = std::stoi(*(verse_match.begin()+2));
-      int verse_n = std::stoi(*(verse_match.begin()+3));
-      std::string verse_line =*(verse_match.begin()+4);
-     
-      if(vbible.find(bookname) == vbible.end())
-      {
-        vbible[bookname] = vbook(1, vchapter(1,""));
-      }
-      if(vbible[bookname].size()==chapter_n)
-      {
-        vbible[bookname].emplace_back(vchapter(1,""));
-      }
-
-      vbible[bookname][chapter_n].emplace_back(verse_line);
-
+      bible[bookname][chapter_n].emplace_back(verse_line);
     }
   }
   auto t2 = std::chrono::system_clock::now();
   std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
   std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
 
-  std::cout<<vbible["John"][3][16]<<std::endl;
+  std::cout<<bible["John"][3][16]<<std::endl;
 
-  // Word count
+  // 1. Word count
   WordCountVec word_count;
   int n_word = 0;
 
-  n_word = count_words(vbible, word_count);
-
-#ifdef NO_USE_FUNC
-  for(const auto& bookname_book: vbible)
-  {
-    std::cout<<bookname_book.first<<std::endl;
-    for(const auto& chapter: bookname_book.second)
-    {
-      std::cout<<chapter.size()<<" ";
-      for(const auto& verse: chapter)
-      {
-        std::string word;
-        for(std::stringstream ss(verse); ss>>word; )
-        {
-          // Remove punctuation
-          std::string word_without_punctuation;
-          std::remove_copy_if(word.begin(), word.end(), std::back_inserter(word_without_punctuation), std::ptr_fun<int, int> (&std::ispunct));
-          // count
-          std::transform(word_without_punctuation.begin(), word_without_punctuation.end(), word_without_punctuation.begin(), ::tolower);
-          word_count[word_without_punctuation]++;
-          ++n_word;
-        }
-      }
-    }
-    //std::cout<<std::endl;
-  }
-#endif
+  n_word = count_words(bible, word_count);
 
 #ifdef PRINT_WORDS_BY_COUNT
   for(const auto& wc : word_count)
@@ -292,7 +232,7 @@ int main(int argc, char** argv)
 
   std::cout<<"Total "<<n_word<<" words"<<std::endl;
 
-  // Sort words by counts
+  // 2. Sort words by counts
   typedef std::pair<std::string, int> word_freq;
   std::vector<word_freq> word_by_freq(word_count.begin(), word_count.end());
   std::sort(word_by_freq.begin(), word_by_freq.end(), [](const word_freq& a, const word_freq& b){return a.second<b.second;});
@@ -303,30 +243,27 @@ int main(int argc, char** argv)
   }
   std::cout<<std::endl;
 
-  // Construct word vectors by book
+  // 3. Construct word vectors by book
   std::map<std::string, WordCountVec> wc_by_book;
-  for(const auto& book: vbible)
+  for(const auto& book: bible)
   {
     WordCountVec wcv;
     count_words(book.second, wcv);
     wc_by_book[book.first] = wcv;
   }
 
-  // Compute distance matrix
+
+  // 4. Compute distance matrix between books
   auto t4 = std::chrono::system_clock::now();
   Matrix<double> dist;
-
   dist = compute_book_to_book_distance(wc_by_book);
-
-
-
   auto t5 = std::chrono::system_clock::now();
   time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
   std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
 
-  // Sort by closest book-book pair
+
+  // 5. Sort by closest book-book pair
   // - matrix into a vector
-  
   std::vector<std::string> booknames;
   // - - copy only book names
   std::transform(wc_by_book.begin(), wc_by_book.end(), std::back_inserter(booknames), 
@@ -347,11 +284,70 @@ int main(int argc, char** argv)
     std::cout<<bbd.first.first<<"-"<<bbd.first.second<<": "<<bbd.second<<std::endl;
   } 
 
+
+  // 6. Find the most frequent bigram
+  Bigram bigram;
+  construct_bigram(bible, bigram);
+  // sort by count
+  typedef std::pair<std::tuple<std::string, std::string>, int> bigram_freq;
+  std::vector<bigram_freq> bigram_by_freq(bigram.begin(), bigram.end());
+  
+  std::sort(bigram_by_freq.begin(), bigram_by_freq.end(), [](const bigram_freq& a, const bigram_freq& b){return a.second<b.second;});
+
+  for(const auto& bc : bigram_by_freq)
+  {
+    std::cout<<std::get<0>(bc.first)<<","<<std::get<1>(bc.first)<<":"<<bc.second<<" ";
+  }
+  std::cout<<std::endl;
+
+
+  std::cout<<"Total "<<word_count.size()<<" words"<<std::endl;
+  std::cout<<"Total "<<bigram.size()<<" bigrams"<<std::endl;
   return 0;
 }
 
+void add_to_bigram(Bigram& bigram, const std::string& word1, const std::string& word2)
+{
+  ++bigram[std::make_tuple(word1, word2)];
+}
 
+void add_to_bigram(const Chapter& chapter, Bigram& bigram)
+{
+  std::string word; 
+  for(const std::string& verse: chapter)
+  {
+    std::string word_without_punctuation0;
+    for(std::stringstream ss(verse); ss>>word; )
+    {
+          // Remove punctuation
+          std::string word_without_punctuation;
+          std::remove_copy_if(word.begin(), word.end(), std::back_inserter(word_without_punctuation), std::ptr_fun<int, int> (&std::ispunct));
+          // count
+          std::transform(word_without_punctuation.begin(), word_without_punctuation.end(), word_without_punctuation.begin(), ::tolower);
 
+          if(word_without_punctuation0.size()>0)
+          {
+            add_to_bigram(bigram, word_without_punctuation0, word_without_punctuation);
+          }
+          word_without_punctuation0 = word_without_punctuation;
+    }
+  }
+}
+void add_to_bigram(const Book& book, Bigram& bigram)
+{
+  for(const Chapter& chapter: book)
+  {
+    add_to_bigram(chapter, bigram);
+  }
+}
+void construct_bigram(const Bible& bible, Bigram& bigram)
+{
+  for(const auto& name_book : bible)
+  {
+    add_to_bigram(name_book.second, bigram);
+  }
+  
+}
 
 
 
