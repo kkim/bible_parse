@@ -73,6 +73,12 @@ typedef std::map<std::string,int> WordCountVec;
 typedef std::map<std::string, Book> Bible;
 typedef std::pair<std::string, std::string> BookBook;
 typedef std::map<std::tuple<std::string, std::string>, int> Bigram;
+typedef std::map<std::vector<std::string>, int> Ngram;
+
+void add_to_ngram(Ngram& ngram, const std::vector<std::string&> wordVec);
+void construct_ngram(const Chapter& book, Ngram& ngram);
+void construct_ngram(const Book& book, Ngram& ngram);
+void construct_ngram(const Bible& bible, Ngram& ngram);
 
 void add_to_bigram(Bigram& bigram, const std::string& word1, const std::string& word2);
 void construct_bigram(const Chapter& book, Bigram& bigram);
