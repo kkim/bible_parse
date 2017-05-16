@@ -30,6 +30,34 @@ struct map_greater{
   } 
 };
 
+
+std::string print(const std::tuple<std::string, std::string>& tss)
+{
+  std::string s(std::get<0>(tss)+","+std::get<1>(tss));
+  return s;
+}
+
+template<typename T>
+void print_vec_N(std::vector<std::pair<const T, int> >& v, int N)
+{
+  int ii = 0;
+  for(const auto it = v.begin(); it!=v.end() && ii<N; ++it, ++ii)
+  {
+    std::cout<<print(*it).first<<":"<<(*it).second<<" ";
+  }
+  std::cout<<std::endl;
+}
+
+template<typename T>
+std::vector<std::pair<const T,int> > sortedMap(const std::map<T,int>& m)
+{
+  typedef std::pair<T, int> pTi;
+  std::vector<pTi> v(m.begin(), m.end());
+  
+  std::sort(v.begin(), v.end(), [](const pTi& a, const pTi& b){return a.second<b.second;});
+  return v;
+}
+
 template<typename T>
 std::vector<std::pair<const T,int> > maxN(const std::map<T,int>& m, int N)
 {
