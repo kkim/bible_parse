@@ -10,55 +10,10 @@
 #include <map>
 #include <chrono>
 #include <cmath>
-
-template<typename T>
-class Matrix:public std::vector<std::vector<T> >
-{
-  friend std::ostream &operator<<(std::ostream& os, const Matrix<T>& m)
-  {
-    for(const auto &row: m)
-    {
-      for(const auto& col: row)
-      {
-        os<<col<<",";
-      }
-      os<<std::endl;
-    }
-    
-    return os;
-  }
-
-  public:
-  Matrix(){}
- ~Matrix(){}
-  Matrix(size_t n_row, size_t n_col)
-  {
-    this->resize(n_row, n_col);
-  }
-
-
-  void resize(size_t n_row, size_t n_col)
-  {
-    (dynamic_cast<std::vector<std::vector<T> >*>(this))->resize(n_row);
-    for(auto &row: *this)
-    {
-      row.resize(n_col);
-    }
-  }
-
-  void set_val(T v)
-  {
-    for(auto &row: *this)
-    {
-      for(auto& col: row)
-      {
-        col = v;
-      }
-    }
-  }
-
-};
-
+#include <queue>
+#include "bpMatrix.h"
+#include "bpCount.h"
+#include <utility> //move
 
 inline std::string trim(const std::string &s)
 {
@@ -67,104 +22,41 @@ inline std::string trim(const std::string &s)
    return (wsback<=wsfront ? std::string() : std::string(wsfront,wsback));
 }
 
-typedef std::vector<std::string> Chapter;
-typedef std::vector<Chapter> Book;
-typedef std::map<std::string,int> WordCountVec;
-typedef std::map<std::string, Book> Bible;
-typedef std::pair<std::string, std::string> BookBook;
-typedef std::map<std::tuple<std::string, std::string>, int> Bigram;
-typedef std::map<std::vector<std::string>, int> Ngram;
-
-void add_to_ngram(Ngram& ngram, const std::vector<std::string&> wordVec);
-void construct_ngram(const Chapter& book, Ngram& ngram);
-void construct_ngram(const Book& book, Ngram& ngram);
-void construct_ngram(const Bible& bible, Ngram& ngram);
-
-void add_to_bigram(Bigram& bigram, const std::string& word1, const std::string& word2);
-void construct_bigram(const Chapter& book, Bigram& bigram);
-void construct_bigram(const Book& book, Bigram& bigram);
-void construct_bigram(const Bible& bible, Bigram& bigram);
-
-
-Matrix<double> compute_book_to_book_distance(const std::map<std::string, WordCountVec>& wc_by_book);
-
 template <typename T>
-std::map<BookBook, T> BookBookMatrix_to_map(const std::vector<std::string>& booknames, const Matrix<T>& mat);
-
-
-int count_words(const Chapter& vc, WordCountVec& word_count)
-{
-  std::string word;
-  int n_word = 0;
-  for(const auto& verse: vc)
+struct map_greater{
+  bool operator()(const std::pair<const T, int>& v1, const std::pair<const T, int>& v2)const
   {
-    for(std::stringstream ss(verse); ss>>word; )
+    return v1.second>v2.second;
+  } 
+};
+
+template<typename T>
+std::vector<std::pair<const T,int> > maxN(const std::map<T,int>& m, int N)
+{
+  std::priority_queue<std::pair<const T, int>, std::vector<std::pair<const T, int> >, map_greater<T> > minheap;
+  for (const auto it: m)
+  {
+    if(minheap.size()<N)
     {
-          // Remove punctuation
-          std::string word_without_punctuation;
-          std::remove_copy_if(word.begin(), word.end(), std::back_inserter(word_without_punctuation), std::ptr_fun<int, int> (&std::ispunct));
-          // count
-          std::transform(word_without_punctuation.begin(), word_without_punctuation.end(), word_without_punctuation.begin(), ::tolower);
-          word_count[word_without_punctuation]++;
-          ++n_word;
+      minheap.emplace_back(it);
+    }
+    else
+    {
+      if(minheap.top().second<it.second)
+      {
+        minheap.pop();
+        minheap.emplace_back(it);
+      }
     }
   }
-  return n_word;
-}
 
-int count_words(const Book& vb, WordCountVec& word_count)
-{
-  int n_word = 0;
-  for(const auto& chapter: vb)
+  std::vector<std::pair<T,int> > v;
+  while(minheap.size()>0)
   {
-    n_word += count_words(chapter, word_count);
+    v = std::move(minheap);
   }
-  return n_word; 
+  return v;
 }
-
-int count_words(const Bible& bible, WordCountVec& word_count)
-{
-  int n_word = 0;
-  for(const auto& book: bible)
-  {
-    n_word += count_words(book.second, word_count);
-  }
-  return n_word;
-}
-
-double wcv_length(const WordCountVec& wc)
-{
-  double mag = 0.0;
-  for(const auto w_c: wc)
-  {
-    mag += (double)w_c.second*w_c.second;
-  }
-  return sqrt(mag);
-}
-
-double wcv_dot_wcv(const WordCountVec& wc1, const WordCountVec& wc2)
-{
-  double dot = 0.0;
-  for(const auto& w_c: wc1)
-  {
-    // in order to use .at() method, make sure the key exists
-    if(wc2.find(w_c.first)!=wc2.end())
-    {
-      dot += (double)w_c.second*wc2.at(w_c.first);
-    }
-  }
-  return dot;
-}
-
-double wcv_distance(const WordCountVec& wc1, const WordCountVec& wc2)
-{
-  double mag1 = wcv_length(wc1);
-  double mag2 = wcv_length(wc2);
-
-  if(mag1*mag2==0.0) return 0.0;
-  else return wcv_dot_wcv(wc1, wc2)/(mag1*mag2);
-}
-
 
 
 int main(int argc, char** argv)
@@ -312,85 +204,3 @@ int main(int argc, char** argv)
   return 0;
 }
 
-void add_to_bigram(Bigram& bigram, const std::string& word1, const std::string& word2)
-{
-  ++bigram[std::make_tuple(word1, word2)];
-}
-
-void add_to_bigram(const Chapter& chapter, Bigram& bigram)
-{
-  std::string word; 
-  for(const std::string& verse: chapter)
-  {
-    std::string word_without_punctuation0;
-    for(std::stringstream ss(verse); ss>>word; )
-    {
-          // Remove punctuation
-          std::string word_without_punctuation;
-          std::remove_copy_if(word.begin(), word.end(), std::back_inserter(word_without_punctuation), std::ptr_fun<int, int> (&std::ispunct));
-          // count
-          std::transform(word_without_punctuation.begin(), word_without_punctuation.end(), word_without_punctuation.begin(), ::tolower);
-
-          if(word_without_punctuation0.size()>0)
-          {
-            add_to_bigram(bigram, word_without_punctuation0, word_without_punctuation);
-          }
-          word_without_punctuation0 = word_without_punctuation;
-    }
-  }
-}
-void add_to_bigram(const Book& book, Bigram& bigram)
-{
-  for(const Chapter& chapter: book)
-  {
-    add_to_bigram(chapter, bigram);
-  }
-}
-void construct_bigram(const Bible& bible, Bigram& bigram)
-{
-  for(const auto& name_book : bible)
-  {
-    add_to_bigram(name_book.second, bigram);
-  }
-  
-}
-
-
-
-Matrix<double> compute_book_to_book_distance(const std::map<std::string, WordCountVec>& wc_by_book)
-{
-  Matrix<double> dist(wc_by_book.size(), wc_by_book.size());
-  int i1 = 0;
-  for(auto book1i = wc_by_book.begin(); book1i != wc_by_book.end(); ++book1i, ++i1)
-  {
-    int i2 = 0;
-    for(auto book2i = wc_by_book.begin(); book2i!=book1i; ++book2i, ++i2)
-    {
-      double d = wcv_distance(wc_by_book.at((*book1i).first), wc_by_book.at((*book2i).first));
-      dist[i1][i2] = dist[i2][i1] = d;
-    }
-    std::cout<<(*book1i).first<<",";
-  }
-  std::cout<<std::endl;
-  std::cout<<dist;
-  return dist;
-}
-
-template <typename T>
-std::map<BookBook, T> BookBookMatrix_to_map(const std::vector<std::string>& booknames, const Matrix<T>& mat)
-{
-  std::map<BookBook, T> bbdist;
-
-  int i1=0;
-  for(std::vector<std::string>::const_iterator book1 = booknames.begin(); book1!=booknames.end(); ++book1)
-  {
-    std::vector<std::string>::const_iterator book2 = book1; int i2 = i1;
-    for(++book2, ++i2; book2!=booknames.end(); ++book2, ++i2)
-    {
-      bbdist[std::make_pair((*book1), (*book2))] = mat[i1][i2];
-    }
-    ++i1;
-  }
-
-  return bbdist;
-}
