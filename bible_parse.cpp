@@ -14,6 +14,20 @@
 #include "bpCount.h"
 #include <utility> //move
 
+auto t4 = std::chrono::system_clock::now();
+auto t5 = std::chrono::system_clock::now();
+void tic()
+{
+  t4 = std::chrono::system_clock::now();
+}
+
+void toc()
+{
+  t5 = std::chrono::system_clock::now();
+  std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
+  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
+}
+
 inline std::string trim(const std::string &s)
 {
    auto wsfront=std::find_if_not(s.begin(),s.end(),[](int c){return std::isspace(c);});
@@ -116,7 +130,7 @@ int main(int argc, char** argv)
   std::regex verse_regex("([1|2|3]? ?[A-Z][a-z]*)\\s+([1-9][0-9]*)\\:([1-9][0-9]*)\\s+(.*)");
   std::smatch verse_match;
 
-  auto t1 = std::chrono::system_clock::now();
+  tic();
   // Make Bible a vector of books
   std::cout<<"Bible with a vector"<<std::endl;
   Bible bible;
@@ -143,9 +157,7 @@ int main(int argc, char** argv)
       bible[bookname][chapter_n].emplace_back(verse_line);
     }
   }
-  auto t2 = std::chrono::system_clock::now();
-  std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
+  toc();
 
   std::cout<<bible["John"][3][16]<<std::endl;
 
@@ -183,13 +195,10 @@ int main(int argc, char** argv)
 
 
   // 4. Compute distance matrix between books
-  auto t4 = std::chrono::system_clock::now();
+  tic();
   Matrix<double> dist;
   dist = compute_book_to_book_distance(wc_by_book);
-  auto t5 = std::chrono::system_clock::now();
-  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
-  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
-
+  toc();
 
   // 5. Sort by closest book-book pair
   // - matrix into a vector
@@ -202,41 +211,33 @@ int main(int argc, char** argv)
   std::map<WordWord, double> bbdist = BookBookMatrix_to_map(booknames, dist);
 
   // - - convert bbdist to a vector of WordWord,double pair
-  t4 = std::chrono::system_clock::now();
+  tic();
   std::vector<std::pair<WordWord, double> > vbbdist;
   std::transform(bbdist.begin(), bbdist.end(), std::back_inserter(vbbdist),[](const std::map<WordWord,double>::value_type& bbd){return std::make_pair(bbd.first, bbd.second);});
   std::sort(vbbdist.begin(), vbbdist.end(), [](const std::pair<WordWord,double>& bbd1, const std::pair<WordWord, double>& bbd2)
   {return bbd1.second>bbd2.second;});
   print_vec_pair_N(vbbdist,50);
-  t5 = std::chrono::system_clock::now();
-  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
-  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
+  toc();
 
-  t4 = std::chrono::system_clock::now();
+  tic();
   print_vec_pair_N(maxN(bbdist,50),50);
-  t5 = std::chrono::system_clock::now();
-  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
-  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
+  toc();
 
   // 6. Find the most frequent bigram
   Bigram bigram;
   construct_bigram(bible, bigram);
 
   // sort by count
-  t4 = std::chrono::system_clock::now();
+  tic();
   typedef std::pair<WordWord, int> bigram_freq;
   std::vector<bigram_freq> bigram_by_freq(bigram.begin(), bigram.end());
   std::sort(bigram_by_freq.begin(), bigram_by_freq.end(), [](const bigram_freq& a, const bigram_freq& b){return a.second>b.second;});
   print_vec_pair_N(bigram_by_freq,50);
-  t5 = std::chrono::system_clock::now();
-  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
-  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
+  toc();
 
-  t4 = std::chrono::system_clock::now();
+  tic();
   print_vec_pair_N(maxN(bigram,50),50);
-  t5 = std::chrono::system_clock::now();
-  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
-  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
+  toc();
 
   std::cout<<"Total "<<word_count.size()<<" words"<<std::endl;
   std::cout<<"Total "<<bigram.size()<<" bigrams"<<std::endl;
