@@ -37,16 +37,37 @@ std::string print(const std::tuple<std::string, std::string>& tss)
   return s;
 }
 
-template<typename T>
-void print_vec_N(std::vector<std::pair<const T, int> >& v, int N)
+void print_vec_pair_N(const std::vector<std::pair<std::string, int> >& v, int N)
 {
   int ii = 0;
-  for(const auto it = v.begin(); it!=v.end() && ii<N; ++it, ++ii)
+  for(auto it = v.cbegin(); it!=v.cend() && ii<N; ++it, ++ii)
   {
-    std::cout<<print(*it).first<<":"<<(*it).second<<" ";
+    std::cout<<print((*it).first)<<":"<<(*it).second<<" ";
   }
   std::cout<<std::endl;
 }
+
+void print_vec_pair_N(const std::vector<std::pair<const std::tuple<std::string, std::string>, int> >& v, int N)
+{
+  int ii = 0;
+  for(auto it = v.cbegin(); it!=v.cend() && ii<N; ++it, ++ii)
+  {
+    //std::cout<<print(*it).first<<":"<<(*it).second<<" ";
+    std::cout<<" ";
+  }
+  std::cout<<std::endl;
+}
+/*
+template<typename T>
+void print_vec_pair_N(const std::vector<std::pair<const T, int> >& v, int N)
+{
+  int ii = 0;
+  for(auto it = v.cbegin(); it!=v.cend() && ii<N; ++it, ++ii)
+  {
+    std::cout<<print((*it).first)<<":"<<(*it).second<<" ";
+  }
+  std::cout<<std::endl;
+}*/
 
 template<typename T>
 std::vector<std::pair<const T,int> > sortedMap(const std::map<T,int>& m)
@@ -161,13 +182,18 @@ int main(int argc, char** argv)
   // 2. Sort words by counts
   typedef std::pair<std::string, int> word_freq;
   std::vector<word_freq> word_by_freq(word_count.begin(), word_count.end());
-  std::sort(word_by_freq.begin(), word_by_freq.end(), [](const word_freq& a, const word_freq& b){return a.second<b.second;});
+  std::sort(word_by_freq.begin(), word_by_freq.end(), [](const word_freq& a, const word_freq& b){return a.second>b.second;});
 
+/*
   for(const auto& wc : word_by_freq)
   {
     std::cout<<wc.first<<":"<<wc.second<<" ";
   }
   std::cout<<std::endl;
+*/
+  print_vec_pair_N(word_by_freq,10);
+
+  return 0;
 
   // 3. Construct word vectors by book
   std::map<std::string, WordCountVec> wc_by_book;

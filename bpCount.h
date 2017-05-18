@@ -6,7 +6,7 @@
 
 typedef std::vector<std::string> Chapter;
 typedef std::vector<Chapter> Book;
-typedef std::map<std::string,int> WordCountVec;
+typedef std::map<const std::string,int> WordCountVec;
 typedef std::map<std::string, Book> Bible;
 typedef std::pair<std::string, std::string> BookBook;
 typedef std::map<std::tuple<std::string, std::string>, int> Bigram;
