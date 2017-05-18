@@ -196,8 +196,7 @@ int main(int argc, char** argv)
 
   // 4. Compute distance matrix between books
   tic();
-  Matrix<double> dist;
-  dist = compute_book_to_book_distance(wc_by_book);
+  Matrix<double> dist = compute_book_to_book_distance(wc_by_book);
   toc();
 
   // 5. Sort by closest book-book pair
@@ -211,16 +210,6 @@ int main(int argc, char** argv)
   std::map<WordWord, double> bbdist = BookBookMatrix_to_map(booknames, dist);
 
   // - - convert bbdist to a vector of WordWord,double pair
-/*
-  tic();
-  std::vector<std::pair<WordWord, double> > vbbdist;
-  std::transform(bbdist.begin(), bbdist.end(), std::back_inserter(vbbdist),[](const std::map<WordWord,double>::value_type& bbd){return std::make_pair(bbd.first, bbd.second);});
-  std::sort(vbbdist.begin(), vbbdist.end(), [](const std::pair<WordWord,double>& bbd1, const std::pair<WordWord, double>& bbd2)
-  {return bbd1.second>bbd2.second;});
-  print_vec_pair_N(vbbdist,50);
-  toc();
-*/
-
   tic();
   print_vec_pair_N(maxN(bbdist,50),50);
   toc();
@@ -230,14 +219,6 @@ int main(int argc, char** argv)
   construct_bigram(bible, bigram);
 
   // sort by count
-/*
-  tic();
-  typedef std::pair<WordWord, int> bigram_freq;
-  std::vector<bigram_freq> bigram_by_freq(bigram.begin(), bigram.end());
-  std::sort(bigram_by_freq.begin(), bigram_by_freq.end(), [](const bigram_freq& a, const bigram_freq& b){return a.second>b.second;});
-  print_vec_pair_N(bigram_by_freq,50);
-  toc();
-*/
   tic();
   print_vec_pair_N(maxN(bigram,50),50);
   toc();
