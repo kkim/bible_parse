@@ -21,9 +21,9 @@ inline std::string trim(const std::string &s)
    return (wsback<=wsfront ? std::string() : std::string(wsfront,wsback));
 }
 
-template <typename T>
+template <typename T, typename Tmetric>
 struct map_greater{
-  bool operator()(const std::pair<const T, int>& v1, const std::pair<const T, int>& v2)const
+  bool operator()(const std::pair<const T, Tmetric>& v1, const std::pair<const T, Tmetric>& v2)const
   {
     return v1.second>v2.second;
   } 
@@ -52,41 +52,43 @@ void print_vec_pair_N(const std::vector<std::pair<T, Tmetric> >& v, int N)
   std::cout<<std::endl;
 }
 
-template<typename T>
-std::vector<std::pair<const T,int> > sortedMap(const std::map<T,int>& m)
+template<typename T, typename Tmetric>
+std::vector<std::pair<const T,Tmetric> > sortedMap(const std::map<T,Tmetric>& m)
 {
-  typedef std::pair<T, int> pTi;
+  typedef std::pair<T, Tmetric> pTi;
   std::vector<pTi> v(m.begin(), m.end());
   
   std::sort(v.begin(), v.end(), [](const pTi& a, const pTi& b){return a.second<b.second;});
   return v;
 }
 
-template<typename T>
-std::vector<std::pair<const T,int> > maxN(const std::map<T,int>& m, int N)
+template<typename T, typename Tmetric>
+std::vector<std::pair<T,Tmetric> > maxN(const std::map<T,Tmetric>& m, int N)
 {
-  std::priority_queue<std::pair<const T, int>, std::vector<std::pair<const T, int> >, map_greater<T> > minheap;
-  for (const auto it: m)
+  std::priority_queue<std::pair<T, Tmetric>, std::vector<std::pair<T, Tmetric> >, map_greater<T,Tmetric> > minheap;
+  for (auto it: m)
   {
     if(minheap.size()<N)
     {
-      minheap.emplace_back(it);
+      minheap.emplace(it);
     }
     else
     {
       if(minheap.top().second<it.second)
       {
         minheap.pop();
-        minheap.emplace_back(it);
+        minheap.emplace(it);
       }
     }
   }
 
-  std::vector<std::pair<T,int> > v;
+  std::vector<std::pair<T,Tmetric> > v;
   while(minheap.size()>0)
   {
-    v = std::move(minheap);
+    v.emplace_back(minheap.top());
+    minheap.pop();
   }
+  std::reverse(v.begin(), v.end());
   return v;
 }
 
@@ -200,24 +202,41 @@ int main(int argc, char** argv)
   std::map<WordWord, double> bbdist = BookBookMatrix_to_map(booknames, dist);
 
   // - - convert bbdist to a vector of WordWord,double pair
+  t4 = std::chrono::system_clock::now();
   std::vector<std::pair<WordWord, double> > vbbdist;
   std::transform(bbdist.begin(), bbdist.end(), std::back_inserter(vbbdist),[](const std::map<WordWord,double>::value_type& bbd){return std::make_pair(bbd.first, bbd.second);});
-
   std::sort(vbbdist.begin(), vbbdist.end(), [](const std::pair<WordWord,double>& bbd1, const std::pair<WordWord, double>& bbd2)
   {return bbd1.second>bbd2.second;});
-
   print_vec_pair_N(vbbdist,50);
+  t5 = std::chrono::system_clock::now();
+  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
+  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
+
+  t4 = std::chrono::system_clock::now();
+  print_vec_pair_N(maxN(bbdist,50),50);
+  t5 = std::chrono::system_clock::now();
+  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
+  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
 
   // 6. Find the most frequent bigram
   Bigram bigram;
   construct_bigram(bible, bigram);
+
   // sort by count
+  t4 = std::chrono::system_clock::now();
   typedef std::pair<WordWord, int> bigram_freq;
   std::vector<bigram_freq> bigram_by_freq(bigram.begin(), bigram.end());
-  
   std::sort(bigram_by_freq.begin(), bigram_by_freq.end(), [](const bigram_freq& a, const bigram_freq& b){return a.second>b.second;});
-
   print_vec_pair_N(bigram_by_freq,50);
+  t5 = std::chrono::system_clock::now();
+  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
+  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
+
+  t4 = std::chrono::system_clock::now();
+  print_vec_pair_N(maxN(bigram,50),50);
+  t5 = std::chrono::system_clock::now();
+  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
+  std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
 
   std::cout<<"Total "<<word_count.size()<<" words"<<std::endl;
   std::cout<<"Total "<<bigram.size()<<" bigrams"<<std::endl;
