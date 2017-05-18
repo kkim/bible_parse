@@ -4,7 +4,6 @@
 #include <vector>
 #include <string>
 #include <iterator>
-#include <tuple>
 #include <regex>
 #include <unordered_map>
 #include <map>
@@ -30,44 +29,28 @@ struct map_greater{
   } 
 };
 
-
-std::string print(const std::tuple<std::string, std::string>& tss)
+std::string print(const std::pair<std::string, std::string>& tss)
 {
-  std::string s(std::get<0>(tss)+","+std::get<1>(tss));
+  std::string s(tss.first+","+tss.second);
   return s;
 }
 
-void print_vec_pair_N(const std::vector<std::pair<std::string, int> >& v, int N)
+std::string print(const std::string& tss)
+{
+  return tss;
+}
+
+template <typename T, typename Tmetric>
+void print_vec_pair_N(const std::vector<std::pair<T, Tmetric> >& v, int N)
 {
   int ii = 0;
   for(auto it = v.cbegin(); it!=v.cend() && ii<N; ++it, ++ii)
   {
     std::cout<<print((*it).first)<<":"<<(*it).second<<" ";
-  }
-  std::cout<<std::endl;
-}
-
-void print_vec_pair_N(const std::vector<std::pair<const std::tuple<std::string, std::string>, int> >& v, int N)
-{
-  int ii = 0;
-  for(auto it = v.cbegin(); it!=v.cend() && ii<N; ++it, ++ii)
-  {
-    //std::cout<<print(*it).first<<":"<<(*it).second<<" ";
     std::cout<<" ";
   }
   std::cout<<std::endl;
 }
-/*
-template<typename T>
-void print_vec_pair_N(const std::vector<std::pair<const T, int> >& v, int N)
-{
-  int ii = 0;
-  for(auto it = v.cbegin(); it!=v.cend() && ii<N; ++it, ++ii)
-  {
-    std::cout<<print((*it).first)<<":"<<(*it).second<<" ";
-  }
-  std::cout<<std::endl;
-}*/
 
 template<typename T>
 std::vector<std::pair<const T,int> > sortedMap(const std::map<T,int>& m)
@@ -184,16 +167,8 @@ int main(int argc, char** argv)
   std::vector<word_freq> word_by_freq(word_count.begin(), word_count.end());
   std::sort(word_by_freq.begin(), word_by_freq.end(), [](const word_freq& a, const word_freq& b){return a.second>b.second;});
 
-/*
-  for(const auto& wc : word_by_freq)
-  {
-    std::cout<<wc.first<<":"<<wc.second<<" ";
-  }
-  std::cout<<std::endl;
-*/
-  print_vec_pair_N(word_by_freq,10);
+  print_vec_pair_N(word_by_freq,50);
 
-  return 0;
 
   // 3. Construct word vectors by book
   std::map<std::string, WordCountVec> wc_by_book;
@@ -222,36 +197,27 @@ int main(int argc, char** argv)
                  [](const std::map<std::string, WordCountVec>::value_type& wc){return wc.first;});
 
   // - - convert it to a book-book to dist map
-  std::map<BookBook, double> bbdist = BookBookMatrix_to_map(booknames, dist);
+  std::map<WordWord, double> bbdist = BookBookMatrix_to_map(booknames, dist);
 
-  // - - convert bbdist to a vector of BookBook,double pair
-  std::vector<std::pair<BookBook, double> > vbbdist;
-  std::transform(bbdist.begin(), bbdist.end(), std::back_inserter(vbbdist),[](const std::map<BookBook,double>::value_type& bbd){return std::make_pair(bbd.first, bbd.second);});
+  // - - convert bbdist to a vector of WordWord,double pair
+  std::vector<std::pair<WordWord, double> > vbbdist;
+  std::transform(bbdist.begin(), bbdist.end(), std::back_inserter(vbbdist),[](const std::map<WordWord,double>::value_type& bbd){return std::make_pair(bbd.first, bbd.second);});
 
-  std::sort(vbbdist.begin(), vbbdist.end(), [](const std::pair<BookBook,double>& bbd1, const std::pair<BookBook, double>& bbd2)
-  {return bbd1.second<bbd2.second;});
+  std::sort(vbbdist.begin(), vbbdist.end(), [](const std::pair<WordWord,double>& bbd1, const std::pair<WordWord, double>& bbd2)
+  {return bbd1.second>bbd2.second;});
 
-  for(auto bbd: vbbdist)
-  {
-    std::cout<<bbd.first.first<<"-"<<bbd.first.second<<": "<<bbd.second<<std::endl;
-  } 
-
+  print_vec_pair_N(vbbdist,50);
 
   // 6. Find the most frequent bigram
   Bigram bigram;
   construct_bigram(bible, bigram);
   // sort by count
-  typedef std::pair<std::tuple<std::string, std::string>, int> bigram_freq;
+  typedef std::pair<WordWord, int> bigram_freq;
   std::vector<bigram_freq> bigram_by_freq(bigram.begin(), bigram.end());
   
-  std::sort(bigram_by_freq.begin(), bigram_by_freq.end(), [](const bigram_freq& a, const bigram_freq& b){return a.second<b.second;});
+  std::sort(bigram_by_freq.begin(), bigram_by_freq.end(), [](const bigram_freq& a, const bigram_freq& b){return a.second>b.second;});
 
-  for(const auto& bc : bigram_by_freq)
-  {
-    std::cout<<std::get<0>(bc.first)<<","<<std::get<1>(bc.first)<<":"<<bc.second<<" ";
-  }
-  std::cout<<std::endl;
-
+  print_vec_pair_N(bigram_by_freq,50);
 
   std::cout<<"Total "<<word_count.size()<<" words"<<std::endl;
   std::cout<<"Total "<<bigram.size()<<" bigrams"<<std::endl;

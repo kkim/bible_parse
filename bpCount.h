@@ -1,15 +1,16 @@
 #include <vector>
 #include <string>
 #include <map>
-#include <tuple>
 #include <bpMatrix.h>
+
+
 
 typedef std::vector<std::string> Chapter;
 typedef std::vector<Chapter> Book;
 typedef std::map<const std::string,int> WordCountVec;
 typedef std::map<std::string, Book> Bible;
-typedef std::pair<std::string, std::string> BookBook;
-typedef std::map<std::tuple<std::string, std::string>, int> Bigram;
+typedef std::pair<std::string, std::string> WordWord;
+typedef std::map<WordWord, int> Bigram;
 typedef std::map<std::vector<std::string>, int> Ngram;
 
 void add_to_ngram(Ngram& ngram, const std::vector<std::string&> wordVec);
@@ -26,7 +27,7 @@ void construct_bigram(const Bible& bible, Bigram& bigram);
 Matrix<double> compute_book_to_book_distance(const std::map<std::string, WordCountVec>& wc_by_book);
 
 template <typename T>
-std::map<BookBook, T> BookBookMatrix_to_map(const std::vector<std::string>& booknames, const Matrix<T>& mat);
+std::map<WordWord, T> BookBookMatrix_to_map(const std::vector<std::string>& booknames, const Matrix<T>& mat);
 
 
 int count_words(const Chapter& vc, WordCountVec& word_count);
@@ -41,9 +42,9 @@ double wcv_distance(const WordCountVec& wc1, const WordCountVec& wc2);
 
 
 template <typename T>
-std::map<BookBook, T> BookBookMatrix_to_map(const std::vector<std::string>& booknames, const Matrix<T>& mat)
+std::map<WordWord, T> BookBookMatrix_to_map(const std::vector<std::string>& booknames, const Matrix<T>& mat)
 {
-  std::map<BookBook, T> bbdist;
+  std::map<WordWord, T> bbdist;
 
   int i1=0;
   for(std::vector<std::string>::const_iterator book1 = booknames.begin(); book1!=booknames.end(); ++book1)

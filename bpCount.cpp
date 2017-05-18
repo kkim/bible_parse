@@ -89,7 +89,7 @@ double wcv_distance(const WordCountVec& wc1, const WordCountVec& wc2)
 
 void add_to_bigram(Bigram& bigram, const std::string& word1, const std::string& word2)
 {
-  ++bigram[std::make_tuple(word1, word2)];
+  ++bigram[std::make_pair(word1, word2)];
 }
 
 void add_to_bigram(const Chapter& chapter, Bigram& bigram)
@@ -144,10 +144,10 @@ Matrix<double> compute_book_to_book_distance(const std::map<std::string, WordCou
       double d = wcv_distance(wc_by_book.at((*book1i).first), wc_by_book.at((*book2i).first));
       dist[i1][i2] = dist[i2][i1] = d;
     }
-    std::cout<<(*book1i).first<<",";
+    //std::cout<<(*book1i).first<<",";
   }
-  std::cout<<std::endl;
-  std::cout<<dist;
+  //std::cout<<std::endl;
+  //std::cout<<dist;
   return dist;
 }
 
