@@ -1,14 +1,16 @@
+#ifndef _BIBLE_PARSE_COUNT_H_
+#define _BIBLE_PARSE_COUNT_H_
+
+
 #include <vector>
 #include <string>
 #include <map>
 #include <bpMatrix.h>
+#include <bible.h>
 
 
 
-typedef std::vector<std::string> Chapter;
-typedef std::vector<Chapter> Book;
 typedef std::map<const std::string,int> WordCountVec;
-typedef std::map<std::string, Book> Bible;
 typedef std::pair<std::string, std::string> WordWord;
 typedef std::map<WordWord, int> Bigram;
 typedef std::map<std::vector<std::string>, int> Ngram;
@@ -59,3 +61,6 @@ std::map<WordWord, T> BookBookMatrix_to_map(const std::vector<std::string>& book
 
   return bbdist;
 }
+
+#endif
+

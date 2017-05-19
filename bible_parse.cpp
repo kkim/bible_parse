@@ -28,13 +28,6 @@ void toc()
   std::cout<<"Took "<<time_span.count()<<" second"<<std::endl;
 }
 
-inline std::string trim(const std::string &s)
-{
-   auto wsfront=std::find_if_not(s.begin(),s.end(),[](int c){return std::isspace(c);});
-   auto wsback=std::find_if_not(s.rbegin(),s.rend(),[](int c){return std::isspace(c);}).base();
-   return (wsback<=wsfront ? std::string() : std::string(wsfront,wsback));
-}
-
 template <typename T, typename Tmetric>
 struct map_greater{
   bool operator()(const std::pair<const T, Tmetric>& v1, const std::pair<const T, Tmetric>& v2)const
@@ -106,59 +99,13 @@ std::vector<std::pair<T,Tmetric> > maxN(const std::map<T,Tmetric>& m, int N)
   return v;
 }
 
+//http://www.gutenberg.org/cache/epub/8294/pg8294.txt
+
 
 int main(int argc, char** argv)
 {
-  std::ifstream in("bible.txt");
-  std::stringstream sstr;
-  std::vector<std::string> verses;
-  std::string tmpstr;
-
-  // read file
-  std::cout<<"Reading bible"<<std::endl;
-  sstr<<in.rdbuf();
-  // split into verses
-  while(std::getline(sstr, tmpstr, '\n'))
-  {
-     verses.emplace_back(tmpstr);
-
-     // First token is book name
-  }
- 
-  std::cout<<"Total "<<verses.size()<<" lines"<<std::endl;
-
-  std::regex verse_regex("([1|2|3]? ?[A-Z][a-z]*)\\s+([1-9][0-9]*)\\:([1-9][0-9]*)\\s+(.*)");
-  std::smatch verse_match;
-
-  tic();
-  // Make Bible a vector of books
-  std::cout<<"Bible with a vector"<<std::endl;
-  Bible bible;
-
-  for(const auto &verse : verses)
-  { 
-    const auto& verset = trim(verse);
-    if(std::regex_match(verset, verse_match, verse_regex))
-    {
-      // Using regex, extract book name, chapter#, verse#, and the verse line.
-      std::string bookname = *(verse_match.begin()+1);
-      int chapter_n = std::stoi(*(verse_match.begin()+2));
-      int verse_n = std::stoi(*(verse_match.begin()+3));
-      std::string verse_line =*(verse_match.begin()+4);
-     
-      if(bible.find(bookname) == bible.end())
-      {
-        bible[bookname] = Book(1, Chapter(1,""));
-      }
-      if(bible[bookname].size()==chapter_n)
-      {
-        bible[bookname].emplace_back(Chapter(1,""));
-      }
-      bible[bookname][chapter_n].emplace_back(verse_line);
-    }
-  }
-  toc();
-
+  Bible bible = WEB();
+  //Bible bible = KJV();
   std::cout<<bible["John"][3][16]<<std::endl;
 
   // 1. Word count
